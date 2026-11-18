@@ -164,11 +164,14 @@ async function ia(system, messages) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': E.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: E.MODEL || 'claude-sonnet-5-5', max_tokens: 600, system, messages }),
+    body: JSON.stringify({ model: E.MODEL || 'claude-sonnet-5-5', max_tokens: 2000, system, messages }),
   });
   const d = await r.json();
   if (!r.ok) { ultimoError = `Anthropic ${r.status}: ${d.error?.message || 'sin detalle'}`; console.error('IA error', JSON.stringify(d)); }
-  return d.content?.[0]?.text || 'Dame un momento, por favor 🙏';
+  // une todos los bloques de texto (el modelo puede devolver otros bloques antes, p. ej. de razonamiento)
+  const texto = (d.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  if (!texto && r.ok) { ultimoError = `Claude respondió sin texto (stop_reason: ${d.stop_reason})`; console.error('IA sin texto', JSON.stringify(d).slice(0, 600)); }
+  return texto || 'Dame un momento, por favor 🙏';
 }
 
 async function crearCita(a, d) {
